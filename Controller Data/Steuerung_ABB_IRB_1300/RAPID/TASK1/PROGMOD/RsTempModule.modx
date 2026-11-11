@@ -1,0 +1,7 @@
+MODULE RsTempModule
+PROC RsTempPath()
+        SetSysData wobj0;
+        SetSysData tool0;
+ENDPROC
+
+ENDMODULE

@@ -1,0 +1,6 @@
+# RobotStudio virtual controller runtime state: regenerated from "Controller Data",
+# contains >100 MB images and private keys/certificates.
+Virtual Controllers/
+
+# RobotStudio per-user station settings
+*.rsuser

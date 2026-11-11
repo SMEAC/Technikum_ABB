@@ -1,0 +1,238 @@
+MODULE Module1
+    
+! "Error"-Meldung nur, weil es ein angelegtes Signal ist von E/A Engineering
+    
+! Home Positionen, als Start- und Endposition vor und nach dem anfahren eines Moduls:
+CONST jointtarget pos_home_start:=[[0,-56.22,49.31,0,36.91,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];    
+CONST jointtarget pos_home_1:=[[-30,-56.22,49.31,0,36.91,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];    
+CONST jointtarget pos_home_2:=[[-90,-56.22,49.31,0,36.91,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];    
+CONST jointtarget pos_home_3:=[[-150,-56.22,49.31,0,36.91,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]]; 
+CONST jointtarget pos_home_4:=[[150,-56.22,49.31,0,36.91,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+CONST jointtarget pos_home_5:=[[90,-56.22,49.31,0,36.91,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]];
+CONST jointtarget pos_home_6:=[[30,-56.22,49.31,0,36.91,0],[9E+09,9E+09,9E+09,9E+09,9E+09,9E+09]]; 
+
+! Für das abspeichern der letzen Home-Position damit der Roboter nach dem Modul wieder dort als Endposition hinfährt
+VAR jointtarget last_home_position;
+
+! RFID Chips von F1 bis F6
+! F1 := 241 laser;
+! F2 := 242 3D Drucker;
+! F3 := 243 delta;
+! F4 := 244 cnc;
+! F5 := 245 frei;
+! F6 := 246 frei;
+
+! (AppStudio) Switch auf dem FlexPendant in der WebApp:
+PERS bool manual_automatic := false;
+
+! Variablen für die eingelesenen RFID-Werte 
+VAR num modul{6};
+VAR num i;
+
+!Aktuelle Position erfassen
+VAR robtarget act_pos;
+VAR robtarget search_pos;
+
+! Dynamische Koordinatensysteme (PERS wobjdata muss man für Koordinatensysteme als Datentyp benutzen)
+PERS wobjdata current_coordinatesystem;
+
+! RFID Location -> wo der RFID Chip anliegt an der Station
+VAR num rfid_location;
+! RFID Chip von F1 bis F6 (F1 -> 0xF1 == 241)
+VAR num rfid_chip;   
+
+PROC main()
+    WHILE TRUE DO
+    bank_modul_reset;
+    
+    IF manual_automatic = TRUE THEN ! Wenn manual_automatic == true dann ist der Betrieb im Automatikbetrieb
+        read_signals;
+        rfid_chip:= GInput(Fahre_Position);
+        rfid_location := 0;
+    
+    ! Jedem RFID-Chip das jeweilige Modul zuweisen        
+        FOR i FROM 1 TO 6 DO 
+            IF modul{i} = (rfid_chip) THEN
+                rfid_location := i; 
+                BREAK;           
+            ENDIF
+        ENDFOR
+    ELSE ! Hier ist der manuelle Betrieb via WebApp im Flexpendant mit den Buttons
+        IF rfid_location = 0 THEN
+            CONTINUE;
+        ENDIF
+        read_signals;
+        IF rfid_location <> 7 THEN 
+            rfid_chip := modul{rfid_location}; 
+        ENDIF
+    ENDIF
+        programm;
+        rfid_location := 0;
+    ENDWHILE
+ENDPROC    
+
+! Allgemeine Homeposition (zwischen Modul 1 und Modul6)
+PROC move_home()
+    MoveAbsJ pos_home_start, v150, fine, tool0\WObj:=wobj0;
+ENDPROC
+    
+! Vollständiges Programm 
+! Erster Switch Case (Test Case):
+! Bspw: Case 1:
+! MoveAbsJ ... -> Zur Homeposition vom Modul fahren
+! last_home_position ... -> diese Abspeichern und nach den 2. Switch Case (Test Case) aufrufen. 
+! Damit er als Endposition wieder sauber aus dem Modul rausfährt und sich frei in der Mitte bewegen kann.
+! current_coordinatesystem ... -> Richtiges Koordinatensystem laden vom Modul (Somit ist die X-Achse immer Endlang der Kante, wo das Modul angedockt ist.
+! SetGO ... -> Richtige Bank von den Keyence Scanner auswählen.
+!  rfid_chip - 0xF0 ... -> rfid_chip arbeitet hier mit F1 = 241 bis F6 = 246 aber tia portal arbeitet mit F1 = 1 bis F6 = 6
+
+! Beim ersten Switch Case (Test Case) steht der Grundstein. 
+! Das einzige was man anpassen muss, sollte ist die Geschwindigkeit von v300 
+! (es gibt nicht nur v sondern auch vrot oder vlin)
+! Außerdem sollte man das tool0 verändern wennn man ein eigenen Greifer installiert hat.
+! Dort sollte man auf jeden Fall die CAD Datei unter Menu Modellieren importieren und
+! dann bei Home hinzufügen und dann kann man via drag and drop diesen Greifer auf den ABB Roboter ziehen.
+! Wichtig der sollte überall eingefügt sein im Programmcode und es muss ggf. etwas an den Positionen gefeilt werden.
+
+! Zweiter Switch Case (Test Case) wird dann das entsprechende Programm ausgeführt vom jeweiligen Modul
+! Dieses muss man erweitern wenn eines Tages mehr als 6 Module existieren.
+! Ansonsten kann man die Namen F5 und F6 für die jeweiligen RFID Chips mit dem Namen der neuen Module anpassen.
+! Dann aber auch die Funktion dazu den Namen ändern.
+PROC programm()
+     TEST rfid_location
+        CASE 1: 
+            MoveAbsJ pos_home_1, v300, fine, tool0\WObj:=wobj0;
+            last_home_position := pos_home_1;
+            current_coordinatesystem := coordinate_system_module_1;
+            SetGO Bank_Modul1, rfid_chip - 0xF0; ! "Verbindung" mit Tia Portal
+        CASE 2: 
+            MoveAbsJ pos_home_2, v300, fine, tool0\WObj:=wobj0;
+            last_home_position := pos_home_2;
+            current_coordinatesystem := coordinate_system_module_2;
+            SetGO Bank_Modul2, rfid_chip - 0xF0;
+        CASE 3: 
+            MoveAbsJ pos_home_3, v300, fine, tool0\WObj:=wobj0;
+            last_home_position := pos_home_3;
+            current_coordinatesystem := coordinate_system_module_3;
+            SetGO Bank_Modul3, rfid_chip - 0xF0;
+        CASE 4: 
+            MoveAbsJ pos_home_4, v300, fine, tool0\WObj:=wobj0;
+            last_home_position := pos_home_4;
+            current_coordinatesystem := coordinate_system_module_4;
+            SetGO Bank_Modul4, rfid_chip - 0xF0;
+        CASE 5: 
+            MoveAbsJ pos_home_5, v300, fine, tool0\WObj:=wobj0;
+            last_home_position := pos_home_5;
+            current_coordinatesystem := coordinate_system_module_5;
+            SetGO Bank_Modul5, rfid_chip - 0xF0;
+        CASE 6: 
+            MoveAbsJ pos_home_6, v300, fine, tool0\WObj:=wobj0;
+            last_home_position := pos_home_6;
+            current_coordinatesystem := coordinate_system_module_6;
+            SetGO Bank_Modul6, rfid_chip - 0xF0;
+        CASE 7:
+            move_home;
+            RETURN;
+        DEFAULT: 
+            TPWrite "Ungueltige Modulnummer!";
+    ENDTEST
+
+    WaitDI Bank_OK, 1; ! Sollte man NICHT verändern
+      
+    IF rfid_location <> 0 THEN 
+        ! Aktuelle Position erfassen:
+        act_pos := CRobT(\Tool:=tool0 \WObj:=current_coordinatesystem);
+        search_pos := act_pos;
+        
+        TEST rfid_chip
+            CASE 241: 
+                laser;
+            CASE 242: 
+                printer_3d;
+            CASE 243: 
+                delta;
+            CASE 244: 
+                cnc;
+            CASE 245:
+                F5;
+            CASE 246: 
+                F6;
+            DEFAULT: 
+                !TPWrite "Ungueltiges Programm!";
+        ENDTEST
+        MoveAbsJ last_home_position, v50, fine, tool0\WObj:=wobj0; ! NICHT VERÄNDERN
+    ENDIF
+ENDPROC
+    
+! Sollte NICHT verändert werden.
+PROC read_signals()
+    ! Jeden RFID-Chip an dem jeweiligen Modul auslesen
+    modul{1} := GInput(RFID_Modul1);
+    modul{2} := GInput(RFID_Modul2);
+    modul{3} := GInput(RFID_Modul3);
+    modul{4} := GInput(RFID_Modul4);
+    modul{5} := GInput(RFID_Modul5);
+    modul{6} := GInput(RFID_Modul6);
+ENDPROC
+    
+! Erweitern falls mehr Module in Zukunft existieren.
+PROC bank_modul_reset()
+    SetGo Bank_Modul1, 0;
+    SetGo Bank_Modul2, 0;
+    SetGo Bank_Modul3, 0;
+    SetGo Bank_Modul4, 0;
+    SetGo Bank_Modul5, 0;
+    SetGo Bank_Modul6, 0;
+ENDPROC
+    
+
+! Hier sind die Programme der jeweiligen Module.
+PROC laser()
+    search_pos.trans.x := act_pos.trans.x - 50;
+    MoveL search_pos, v30, fine, tool0\WObj:=current_coordinatesystem;
+    search_pos.trans.x := act_pos.trans.x + 50;
+    MoveL search_pos, v30, fine, tool0\WObj:=current_coordinatesystem;       
+    MoveL act_pos, v30, fine, tool0\WObj:=current_coordinatesystem;
+ENDPROC
+    
+PROC printer_3d()
+    search_pos.trans.x := act_pos.trans.x - 50;
+    MoveL search_pos, v30, fine, tool0\WObj:=current_coordinatesystem;
+    search_pos.trans.x := act_pos.trans.x + 50;
+    MoveL search_pos, v30, fine, tool0\WObj:=current_coordinatesystem;
+    MoveL act_pos, v30, fine, tool0\WObj:=current_coordinatesystem;
+ENDPROC
+    
+PROC delta()
+    search_pos.trans.x := act_pos.trans.x - 50;
+    MoveL search_pos, v30, fine, tool0\WObj:=current_coordinatesystem;
+    search_pos.trans.x := act_pos.trans.x + 50;
+    MoveL search_pos, v30, fine, tool0\WObj:=current_coordinatesystem;
+    MoveL act_pos, v30, fine, tool0\WObj:=current_coordinatesystem;
+ENDPROC
+    
+PROC cnc()
+    search_pos.trans.x := act_pos.trans.x - 50;
+    MoveL search_pos, v30, fine, tool0\WObj:=current_coordinatesystem;
+    search_pos.trans.x := act_pos.trans.x + 50;
+    MoveL search_pos, v30, fine, tool0\WObj:=current_coordinatesystem;
+    MoveL act_pos, v30, fine, tool0\WObj:=current_coordinatesystem;
+ENDPROC
+    
+PROC F5()
+    search_pos.trans.x := act_pos.trans.x - 50;
+    MoveL search_pos, v30, fine, tool0\WObj:=current_coordinatesystem;
+    search_pos.trans.x := act_pos.trans.x + 50;
+    MoveL search_pos, v30, fine, tool0\WObj:=current_coordinatesystem;
+    MoveL act_pos, v30, fine, tool0\WObj:=current_coordinatesystem;
+ENDPROC
+    
+PROC F6()
+    search_pos.trans.x := act_pos.trans.x - 50;
+    MoveL search_pos, v30, fine, tool0\WObj:=current_coordinatesystem;
+    search_pos.trans.x := act_pos.trans.x + 50;
+    MoveL search_pos, v30, fine, tool0\WObj:=current_coordinatesystem;
+    MoveL act_pos, v30, fine, tool0\WObj:=current_coordinatesystem;
+ENDPROC
+
+ENDMODULE

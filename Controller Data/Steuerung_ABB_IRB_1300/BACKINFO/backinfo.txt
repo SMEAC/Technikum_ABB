@@ -1,0 +1,45 @@
+>>SYSTEM_ID:
+VIRTUAL_CONTROLLER
+
+>>PRODUCTS_ID:
+RobotOS Version: 17.1.0
+RobotControl Version: 7.19.1
+FlexPendantSoftwareUpdate Version: 1.20.0
+Robots Version: 1.19.0
+
+  RobotControl Base
+  English
+  3120-1 FlexPendant Limited App Package
+  3120-2 FlexPendant Essential App Package
+  3151-1 FlexPendant Program Package
+  Motor Commutation
+  Service Info System
+  System without axis computer
+  Main computer M28.01
+  C30
+  B3
+  Axis Calibration
+  C30 Type A
+  FlexPendant App Package
+  Robots Base
+  IRB 1300-7/1.4
+
+>>HOME:
+All public files and directories
+
+>>SYSPAR:
+SYS.cfg
+SIO.cfg
+PROC.cfg
+MMC.cfg
+MOC.cfg
+EIO.cfg
+
+
+>>TASK1: (T_ROB1,,)
+PROGMOD/Module1.modx @ 
+PROGMOD/CalibData.modx @ 
+PROGMOD/RsTempModule.modx @ 
+
+
+>>EOF:
